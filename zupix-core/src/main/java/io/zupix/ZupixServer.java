@@ -18,7 +18,7 @@ public final class ZupixServer implements AutoCloseable {
         Objects.requireNonNull(router, "router");
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         ZupixServer runtime = new ZupixServer(server, router);
-        server.createContext("/", exchange -> runtime.handle(exchange));
+        server.createContext("/", runtime::handle);
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         return runtime;
     }
@@ -29,13 +29,18 @@ public final class ZupixServer implements AutoCloseable {
     private void handle(HttpExchange exchange) throws IOException {
         String path = exchange.getRequestURI().getPath();
         if ("/openapi.json".equals(path) && "GET".equals(exchange.getRequestMethod())) {
-            write(exchange, 200, Json.write(new OpenApiGenerator().generate(router)), "application/json; charset=utf-8");
+            write(exchange, 200, Json.write(new OpenApiDocumentGenerator().generate(router)), "application/json; charset=utf-8");
             return;
         }
         if ("/docs".equals(path) && "GET".equals(exchange.getRequestMethod())) {
-            String html = "<!doctype html><html><head><title>Zupix API Docs</title></head>"
-                    + "<body><h1>Zupix API</h1><p>OpenAPI specification: <a href='/openapi.json'>/openapi.json</a></p>"
-                    + "<p>Interactive documentation UI will be added in the next milestone.</p></body></html>";
+            String html = "<!doctype html><html><head><meta charset='utf-8'><title>Zupix API Docs</title>"
+                    + "<style>body{font-family:system-ui;margin:40px;max-width:900px}pre{background:#f5f5f5;padding:16px;overflow:auto}"
+                    + "button{padding:8px 12px;cursor:pointer}</style></head><body>"
+                    + "<h1>Zupix API</h1><p>Interactive API documentation.</p>"
+                    + "<button onclick='loadSpec()'>Load OpenAPI</button><pre id='spec'>Loading...</pre>"
+                    + "<script>async function loadSpec(){const r=await fetch('/openapi.json');"
+                    + "document.getElementById('spec').textContent=JSON.stringify(await r.json(),null,2)}loadSpec();</script>"
+                    + "</body></html>";
             write(exchange, 200, html, "text/html; charset=utf-8");
             return;
         }
