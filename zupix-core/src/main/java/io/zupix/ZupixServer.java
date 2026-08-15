@@ -13,10 +13,7 @@ import java.util.concurrent.Executors;
 /** Minimal HTTP runtime for the Zupix foundation. */
 public final class ZupixServer implements AutoCloseable {
     private final HttpServer server;
-
-    private ZupixServer(HttpServer server) {
-        this.server = server;
-    }
+    private ZupixServer(HttpServer server) { this.server = server; }
 
     public static ZupixServer create(int port, Router router) throws IOException {
         Objects.requireNonNull(router, "router");
@@ -25,38 +22,43 @@ public final class ZupixServer implements AutoCloseable {
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         return new ZupixServer(server);
     }
-
     public void start() { server.start(); }
     public int port() { return server.getAddress().getPort(); }
     @Override public void close() { server.stop(0); }
 
     private static void handle(HttpExchange exchange, Router router) throws IOException {
-        Router.MatchedRoute matched = router.match(
-                exchange.getRequestMethod(), exchange.getRequestURI().getPath());
-        byte[] body;
+        Router.MatchedRoute matched = router.match(exchange.getRequestMethod(), exchange.getRequestURI().getPath());
+        byte[] response;
         int status;
+        String contentType = "text/plain; charset=utf-8";
         if (matched == null) {
-            body = "Not Found".getBytes(StandardCharsets.UTF_8);
+            response = "Not Found".getBytes(StandardCharsets.UTF_8);
             status = 404;
         } else if (matched.route().handler() == null) {
-            body = "Zupix route matched".getBytes(StandardCharsets.UTF_8);
+            response = "Zupix route matched".getBytes(StandardCharsets.UTF_8);
             status = 200;
         } else {
             try {
+                String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 Object result = matched.route().handler().invoke(
-                        matched.parameters(), exchange.getRequestURI().getRawQuery());
-                body = String.valueOf(result).getBytes(StandardCharsets.UTF_8);
+                        matched.parameters(), exchange.getRequestURI().getRawQuery(), requestBody);
+                if (result == null) response = new byte[0];
+                else if (result instanceof String text) response = text.getBytes(StandardCharsets.UTF_8);
+                else {
+                    response = Json.write(result).getBytes(StandardCharsets.UTF_8);
+                    contentType = "application/json; charset=utf-8";
+                }
                 status = 200;
             } catch (IllegalArgumentException exception) {
-                body = exception.getMessage().getBytes(StandardCharsets.UTF_8);
+                response = exception.getMessage().getBytes(StandardCharsets.UTF_8);
                 status = 400;
             } catch (RuntimeException exception) {
-                body = "Internal Server Error".getBytes(StandardCharsets.UTF_8);
+                response = "Internal Server Error".getBytes(StandardCharsets.UTF_8);
                 status = 500;
             }
         }
-        exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
-        exchange.sendResponseHeaders(status, body.length);
-        try (OutputStream output = exchange.getResponseBody()) { output.write(body); }
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.sendResponseHeaders(status, response.length);
+        try (OutputStream output = exchange.getResponseBody()) { output.write(response); }
     }
 }
