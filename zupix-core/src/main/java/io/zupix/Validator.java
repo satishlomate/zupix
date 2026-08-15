@@ -2,11 +2,16 @@ package io.zupix;
 
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
+
 import java.util.List;
 
 /** Performs Jakarta Bean Validation for Zupix request models. */
 final class Validator {
-    private final ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+    private final ValidatorFactory factory = Validation.byDefaultProvider()
+            .configure()
+            .messageInterpolator(new ParameterMessageInterpolator())
+            .buildValidatorFactory();
     private final jakarta.validation.Validator validator = factory.getValidator();
 
     void validate(Object value) {
