@@ -56,12 +56,15 @@ public final class ZupixCli {
                             <version>0.1.0-SNAPSHOT</version>
                         </dependency>
                     </dependencies>
-                    <repositories>
-                        <repository>
-                            <id>zupix-local-development</id>
-                            <url>file:${user.home}/.m2/repository</url>
-                        </repository>
-                    </repositories>
+                    <build>
+                        <plugins>
+                            <plugin>
+                                <groupId>org.codehaus.mojo</groupId>
+                                <artifactId>exec-maven-plugin</artifactId>
+                                <version>3.5.0</version>
+                            </plugin>
+                        </plugins>
+                    </build>
                 </project>
                 """.formatted(name);
     }
