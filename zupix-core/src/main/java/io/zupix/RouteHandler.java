@@ -1,6 +1,7 @@
 package io.zupix;
 
 import io.zupix.security.Authentication;
+import io.zupix.security.AuthenticationContext;
 import io.zupix.security.RoleAuthorizer;
 import io.zupix.security.RolesAllowed;
 import java.lang.reflect.InvocationTargetException;
@@ -18,20 +19,14 @@ public final class RouteHandler {
     private final RoleAuthorizer authorizer = new RoleAuthorizer();
 
     public RouteHandler(Object target, Method method) { this(target, method, new Injector()); }
-    public RouteHandler(Object target, Method method, Injector injector) {
-        this.target = target; this.method = method; this.injector = injector; this.method.setAccessible(true);
-    }
-    public Object invoke() { return invoke(Map.of(), null, "", Authentication.anonymous()); }
-    public Object invoke(Map<String, String> pathParameters, String rawQuery) { return invoke(pathParameters, rawQuery, "", Authentication.anonymous()); }
-    public Object invoke(Map<String, String> pathParameters, String rawQuery, String body) { return invoke(pathParameters, rawQuery, body, Authentication.anonymous()); }
+    public RouteHandler(Object target, Method method, Injector injector) { this.target = target; this.method = method; this.injector = injector; this.method.setAccessible(true); }
+    public Object invoke() { return invoke(Map.of(), null, ""); }
+    public Object invoke(Map<String, String> pathParameters, String rawQuery) { return invoke(pathParameters, rawQuery, ""); }
+    public Object invoke(Map<String, String> pathParameters, String rawQuery, String body) { return invoke(pathParameters, rawQuery, body, AuthenticationContext.current()); }
     public Object invoke(Map<String, String> pathParameters, String rawQuery, String body, Authentication authentication) {
         try { return method.invoke(target, resolveArguments(pathParameters, rawQuery, body, authentication)); }
         catch (IllegalAccessException e) { throw new IllegalStateException("Unable to invoke route handler", e); }
-        catch (InvocationTargetException e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof RuntimeException runtimeException) throw runtimeException;
-            throw new IllegalStateException("Route handler failed", cause);
-        }
+        catch (InvocationTargetException e) { Throwable cause = e.getCause(); if (cause instanceof RuntimeException runtimeException) throw runtimeException; throw new IllegalStateException("Route handler failed", cause); }
     }
     private Object[] resolveArguments(Map<String, String> pathParameters, String rawQuery, String body, Authentication authentication) {
         RolesAllowed roles = method.getAnnotation(RolesAllowed.class);
