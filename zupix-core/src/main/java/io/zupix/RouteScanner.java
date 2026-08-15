@@ -9,17 +9,18 @@ public final class RouteScanner {
     public List<DiscoveredRoute> scan(Object application) {
         List<DiscoveredRoute> discovered = new ArrayList<>();
         for (Method method : application.getClass().getDeclaredMethods()) {
-            add(discovered, method, Get.class, "GET");
-            add(discovered, method, Post.class, "POST");
-            add(discovered, method, Put.class, "PUT");
-            add(discovered, method, Patch.class, "PATCH");
-            add(discovered, method, Delete.class, "DELETE");
+            add(discovered, application, method, Get.class, "GET");
+            add(discovered, application, method, Post.class, "POST");
+            add(discovered, application, method, Put.class, "PUT");
+            add(discovered, application, method, Patch.class, "PATCH");
+            add(discovered, application, method, Delete.class, "DELETE");
         }
         return List.copyOf(discovered);
     }
 
     private <A extends java.lang.annotation.Annotation> void add(
-            List<DiscoveredRoute> routes, Method method, Class<A> annotationType, String httpMethod) {
+            List<DiscoveredRoute> routes, Object target, Method method,
+            Class<A> annotationType, String httpMethod) {
         A annotation = method.getAnnotation(annotationType);
         if (annotation == null) return;
         String path;
@@ -28,7 +29,7 @@ public final class RouteScanner {
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException("Invalid route annotation", exception);
         }
-        routes.add(new DiscoveredRoute(new Route(httpMethod, path), new RouteHandler(method.getDeclaringClass(), method)));
+        routes.add(new DiscoveredRoute(new Route(httpMethod, path), new RouteHandler(target, method)));
     }
 
     public record DiscoveredRoute(Route route, RouteHandler handler) {
