@@ -10,27 +10,7 @@ public final class Router {
     private final List<RegisteredRoute> routes = new ArrayList<>();
 
     public Router get(String path) {
-        return add(new Route("GET", path), new RouteHandler(new Object() {
-            @SuppressWarnings("unused")
-            public String handle() {
-                return "Zupix route matched";
-            }
-        }, findDefaultHandler()));
-    }
-
-    private static java.lang.reflect.Method findDefaultHandler() {
-        try {
-            return DefaultRouteHandler.class.getDeclaredMethod("handle");
-        } catch (NoSuchMethodException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-    }
-
-    private static final class DefaultRouteHandler {
-        @SuppressWarnings("unused")
-        public String handle() {
-            return "Zupix route matched";
-        }
+        return add(new Route("GET", path), null);
     }
 
     Router add(Route route, RouteHandler handler) {
