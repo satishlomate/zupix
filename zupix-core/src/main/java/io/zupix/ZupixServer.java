@@ -2,6 +2,7 @@ package io.zupix;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -13,15 +14,30 @@ import java.util.concurrent.Executors;
 public final class ZupixServer implements AutoCloseable {
     private final HttpServer server;
     private final Router router;
-    private ZupixServer(HttpServer server, Router router) { this.server = server; this.router = router; }
+    private final MiddlewareRegistry middleware;
+    private final ExceptionRegistry exceptions;
+
+    private ZupixServer(HttpServer server, Router router, MiddlewareRegistry middleware, ExceptionRegistry exceptions) {
+        this.server = server;
+        this.router = router;
+        this.middleware = middleware;
+        this.exceptions = exceptions;
+    }
+
     public static ZupixServer create(int port, Router router) throws IOException {
+        return create(port, router, new MiddlewareRegistry(), new ExceptionRegistry());
+    }
+
+    public static ZupixServer create(int port, Router router, MiddlewareRegistry middleware,
+                                     ExceptionRegistry exceptions) throws IOException {
         Objects.requireNonNull(router, "router");
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
-        ZupixServer runtime = new ZupixServer(server, router);
+        ZupixServer runtime = new ZupixServer(server, router, middleware, exceptions);
         server.createContext("/", runtime::handle);
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         return runtime;
     }
+
     public void start() { server.start(); }
     public int port() { return server.getAddress().getPort(); }
     @Override public void close() { server.stop(0); }
@@ -38,42 +54,75 @@ public final class ZupixServer implements AutoCloseable {
                     + "button{padding:8px 12px;cursor:pointer}</style></head><body>"
                     + "<h1>Zupix API</h1><p>Interactive API documentation.</p>"
                     + "<button onclick='loadSpec()'>Load OpenAPI</button><pre id='spec'>Loading...</pre>"
-                    + "<script>async function loadSpec(){const r=await fetch('/openapi.json');"
-                    + "document.getElementById('spec').textContent=JSON.stringify(await r.json(),null,2)}loadSpec();</script>"
+                    + "<script>async function loadSpec(){const r=await fetch('/openapi.json');document.getElementById('spec').textContent=JSON.stringify(await r.json(),null,2)}loadSpec();</script>"
                     + "</body></html>";
             write(exchange, 200, html, "text/html; charset=utf-8");
             return;
         }
-        Router.MatchedRoute matched = router.match(exchange.getRequestMethod(), path);
-        byte[] response; int status; String contentType = "text/plain; charset=utf-8";
-        if (matched == null) { response = "Not Found".getBytes(StandardCharsets.UTF_8); status = 404; }
-        else if (matched.route().handler() == null) { response = "Zupix route matched".getBytes(StandardCharsets.UTF_8); status = 200; }
-        else {
-            try {
-                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                Object result = matched.route().handler().invoke(matched.parameters(), exchange.getRequestURI().getRawQuery(), body);
-                if (result instanceof Response explicit) { status = explicit.status(); applyHeaders(exchange, explicit.headers()); result = explicit.body(); }
-                else status = 200;
-                if (result == null) response = new byte[0];
-                else if (result instanceof String text) response = text.getBytes(StandardCharsets.UTF_8);
-                else { response = Json.write(result).getBytes(StandardCharsets.UTF_8); contentType = "application/json; charset=utf-8"; }
-            } catch (ValidationException exception) {
-                response = Json.write(java.util.Map.of("detail", exception.errors())).getBytes(StandardCharsets.UTF_8); status = 422; contentType = "application/json; charset=utf-8";
-            } catch (IllegalArgumentException exception) {
-                response = exception.getMessage().getBytes(StandardCharsets.UTF_8); status = 400;
-            } catch (RuntimeException exception) {
-                response = "Internal Server Error".getBytes(StandardCharsets.UTF_8); status = 500;
-            }
+
+        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        RequestContext request = new RequestContext(exchange.getRequestMethod(), path,
+                exchange.getRequestURI().getRawQuery(), body);
+        final HttpResponse pipelineResponse = new HttpResponse();
+        try {
+            new MiddlewarePipeline(middleware.all()).execute(request, () -> {
+                try {
+                    pipelineResponse.set(dispatch(exchange, body));
+                } catch (RuntimeException exception) {
+                    Response handled = exceptions.handle(exception);
+                    if (handled != null) pipelineResponse.set(handled);
+                    else throw exception;
+                }
+            });
+        } catch (RuntimeException exception) {
+            Response handled = exceptions.handle(exception);
+            pipelineResponse.set(handled != null ? handled : Response.status(500, "Internal Server Error"));
+        }
+
+        Response result = pipelineResponse.get();
+        if (result == null) result = Response.status(500, "No response produced");
+        writeResponse(exchange, result);
+    }
+
+    private Response dispatch(HttpExchange exchange, String body) {
+        Router.MatchedRoute matched = router.match(exchange.getRequestMethod(), exchange.getRequestURI().getPath());
+        if (matched == null) return Response.status(404, "Not Found");
+        if (matched.route().handler() == null) return Response.ok("Zupix route matched");
+        try {
+            Object result = matched.route().handler().invoke(matched.parameters(), exchange.getRequestURI().getRawQuery(), body);
+            return result instanceof Response explicit ? explicit : Response.ok(result);
+        } catch (ValidationException exception) {
+            return Response.status(422, java.util.Map.of("detail", exception.errors()));
+        } catch (IllegalArgumentException exception) {
+            return Response.status(400, exception.getMessage());
+        }
+    }
+
+    private static void writeResponse(HttpExchange exchange, Response result) throws IOException {
+        applyHeaders(exchange, result.headers());
+        Object body = result.body();
+        String contentType;
+        byte[] bytes;
+        if (body == null) {
+            bytes = new byte[0]; contentType = "text/plain; charset=utf-8";
+        } else if (body instanceof String text) {
+            bytes = text.getBytes(StandardCharsets.UTF_8); contentType = "text/plain; charset=utf-8";
+        } else {
+            bytes = Json.write(body).getBytes(StandardCharsets.UTF_8); contentType = "application/json; charset=utf-8";
         }
         if (exchange.getResponseHeaders().getFirst("Content-Type") == null) exchange.getResponseHeaders().set("Content-Type", contentType);
-        exchange.sendResponseHeaders(status, response.length);
-        try (OutputStream output = exchange.getResponseBody()) { output.write(response); }
+        exchange.sendResponseHeaders(result.status(), bytes.length);
+        try (OutputStream output = exchange.getResponseBody()) { output.write(bytes); }
     }
+
     private static void write(HttpExchange exchange, int status, String body, String contentType) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", contentType);
         exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream output = exchange.getResponseBody()) { output.write(bytes); }
     }
-    private static void applyHeaders(HttpExchange exchange, java.util.Map<String, String> headers) { headers.forEach((name, value) -> exchange.getResponseHeaders().set(name, value)); }
+
+    private static void applyHeaders(HttpExchange exchange, java.util.Map<String, String> headers) {
+        headers.forEach((name, value) -> exchange.getResponseHeaders().set(name, value));
+    }
 }
