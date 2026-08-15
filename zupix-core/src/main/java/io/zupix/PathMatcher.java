@@ -24,7 +24,7 @@ final class PathMatcher {
         }
         expression.append("$");
         parameterNames = names.toArray(String[]::new);
-        pattern = Pattern.compile(expression);
+        pattern = Pattern.compile(expression.toString());
     }
 
     Map<String, String> match(String path) {
