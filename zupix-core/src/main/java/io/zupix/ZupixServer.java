@@ -10,13 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 
-/**
- * Minimal HTTP runtime for the Zupix foundation.
- *
- * <p>This first runtime intentionally uses the JDK HTTP server so the core
- * can run without an external server dependency. The transport abstraction
- * can be replaced or extended later without changing the public routing API.</p>
- */
+/** Minimal HTTP runtime for the Zupix foundation. */
 public final class ZupixServer implements AutoCloseable {
     private final HttpServer server;
 
@@ -26,7 +20,6 @@ public final class ZupixServer implements AutoCloseable {
 
     public static ZupixServer create(int port, Router router) throws IOException {
         Objects.requireNonNull(router, "router");
-
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/", exchange -> handle(exchange, router));
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
@@ -47,20 +40,26 @@ public final class ZupixServer implements AutoCloseable {
     }
 
     private static void handle(HttpExchange exchange, Router router) throws IOException {
-        String method = exchange.getRequestMethod();
-        String path = exchange.getRequestURI().getPath();
-
-        boolean found = router.routes().stream()
-                .anyMatch(route -> route.method().equals(method) && route.path().equals(path));
+        Router.RegisteredRoute registered = router.match(
+                exchange.getRequestMethod(), exchange.getRequestURI().getPath());
 
         byte[] body;
         int status;
-        if (found) {
+        if (registered == null) {
+            body = "Not Found".getBytes(StandardCharsets.UTF_8);
+            status = 404;
+        } else if (registered.handler() == null) {
             body = "Zupix route matched".getBytes(StandardCharsets.UTF_8);
             status = 200;
         } else {
-            body = "Not Found".getBytes(StandardCharsets.UTF_8);
-            status = 404;
+            try {
+                Object result = registered.handler().invoke();
+                body = String.valueOf(result).getBytes(StandardCharsets.UTF_8);
+                status = 200;
+            } catch (RuntimeException exception) {
+                body = "Internal Server Error".getBytes(StandardCharsets.UTF_8);
+                status = 500;
+            }
         }
 
         exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
