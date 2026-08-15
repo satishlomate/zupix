@@ -12,20 +12,34 @@ import java.util.concurrent.Executors;
 /** Minimal HTTP runtime for the Zupix foundation. */
 public final class ZupixServer implements AutoCloseable {
     private final HttpServer server;
-    private ZupixServer(HttpServer server) { this.server = server; }
+    private final Router router;
+    private ZupixServer(HttpServer server, Router router) { this.server = server; this.router = router; }
     public static ZupixServer create(int port, Router router) throws IOException {
         Objects.requireNonNull(router, "router");
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
-        server.createContext("/", exchange -> handle(exchange, router));
+        ZupixServer runtime = new ZupixServer(server, router);
+        server.createContext("/", exchange -> runtime.handle(exchange));
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
-        return new ZupixServer(server);
+        return runtime;
     }
     public void start() { server.start(); }
     public int port() { return server.getAddress().getPort(); }
     @Override public void close() { server.stop(0); }
 
-    private static void handle(HttpExchange exchange, Router router) throws IOException {
-        Router.MatchedRoute matched = router.match(exchange.getRequestMethod(), exchange.getRequestURI().getPath());
+    private void handle(HttpExchange exchange) throws IOException {
+        String path = exchange.getRequestURI().getPath();
+        if ("/openapi.json".equals(path) && "GET".equals(exchange.getRequestMethod())) {
+            write(exchange, 200, Json.write(new OpenApiGenerator().generate(router)), "application/json; charset=utf-8");
+            return;
+        }
+        if ("/docs".equals(path) && "GET".equals(exchange.getRequestMethod())) {
+            String html = "<!doctype html><html><head><title>Zupix API Docs</title></head>"
+                    + "<body><h1>Zupix API</h1><p>OpenAPI specification: <a href='/openapi.json'>/openapi.json</a></p>"
+                    + "<p>Interactive documentation UI will be added in the next milestone.</p></body></html>";
+            write(exchange, 200, html, "text/html; charset=utf-8");
+            return;
+        }
+        Router.MatchedRoute matched = router.match(exchange.getRequestMethod(), path);
         byte[] response; int status; String contentType = "text/plain; charset=utf-8";
         if (matched == null) { response = "Not Found".getBytes(StandardCharsets.UTF_8); status = 404; }
         else if (matched.route().handler() == null) { response = "Zupix route matched".getBytes(StandardCharsets.UTF_8); status = 200; }
@@ -49,6 +63,12 @@ public final class ZupixServer implements AutoCloseable {
         if (exchange.getResponseHeaders().getFirst("Content-Type") == null) exchange.getResponseHeaders().set("Content-Type", contentType);
         exchange.sendResponseHeaders(status, response.length);
         try (OutputStream output = exchange.getResponseBody()) { output.write(response); }
+    }
+    private static void write(HttpExchange exchange, int status, String body, String contentType) throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.sendResponseHeaders(status, bytes.length);
+        try (OutputStream output = exchange.getResponseBody()) { output.write(bytes); }
     }
     private static void applyHeaders(HttpExchange exchange, java.util.Map<String, String> headers) { headers.forEach((name, value) -> exchange.getResponseHeaders().set(name, value)); }
 }
