@@ -17,13 +17,14 @@ public final class RouteHandler {
         this.method.setAccessible(true);
     }
 
-    public Object invoke() {
-        return invoke(Map.of(), null);
+    public Object invoke() { return invoke(Map.of(), null, ""); }
+    public Object invoke(Map<String, String> pathParameters, String rawQuery) {
+        return invoke(pathParameters, rawQuery, "");
     }
 
-    public Object invoke(Map<String, String> pathParameters, String rawQuery) {
+    public Object invoke(Map<String, String> pathParameters, String rawQuery, String body) {
         try {
-            Object[] arguments = resolveArguments(pathParameters, rawQuery);
+            Object[] arguments = resolveArguments(pathParameters, rawQuery, body);
             return method.invoke(target, arguments);
         } catch (IllegalAccessException e) {
             throw new IllegalStateException("Unable to invoke route handler", e);
@@ -34,15 +35,17 @@ public final class RouteHandler {
         }
     }
 
-    private Object[] resolveArguments(Map<String, String> pathParameters, String rawQuery) {
+    private Object[] resolveArguments(Map<String, String> pathParameters, String rawQuery, String body) {
         var parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
         Object[] path = pathResolver.resolve(method, pathParameters);
         Object[] query = queryResolver.resolve(method, rawQuery);
         for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(PathParam.class)) arguments[i] = path[i];
-            else if (parameters[i].isAnnotationPresent(QueryParam.class)) arguments[i] = query[i];
-            else throw new IllegalArgumentException("Unsupported route parameter: " + parameters[i]);
+            var parameter = parameters[i];
+            if (parameter.isAnnotationPresent(PathParam.class)) arguments[i] = path[i];
+            else if (parameter.isAnnotationPresent(QueryParam.class)) arguments[i] = query[i];
+            else if (parameter.isAnnotationPresent(Body.class)) arguments[i] = Json.read(body, parameter.getType());
+            else throw new IllegalArgumentException("Unsupported route parameter: " + parameter);
         }
         return arguments;
     }
