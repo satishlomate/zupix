@@ -1,5 +1,8 @@
 package io.zupix;
 
+import io.zupix.security.Authentication;
+import io.zupix.security.RoleAuthorizer;
+import io.zupix.security.RolesAllowed;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -12,48 +15,36 @@ public final class RouteHandler {
     private final QueryParameterResolver queryResolver = new QueryParameterResolver();
     private final Validator validator = new Validator();
     private final Injector injector;
+    private final RoleAuthorizer authorizer = new RoleAuthorizer();
 
-    public RouteHandler(Object target, Method method) {
-        this(target, method, new Injector());
-    }
-
+    public RouteHandler(Object target, Method method) { this(target, method, new Injector()); }
     public RouteHandler(Object target, Method method, Injector injector) {
-        this.target = target;
-        this.method = method;
-        this.injector = injector;
-        this.method.setAccessible(true);
+        this.target = target; this.method = method; this.injector = injector; this.method.setAccessible(true);
     }
-
-    public Object invoke() { return invoke(Map.of(), null, ""); }
-    public Object invoke(Map<String, String> pathParameters, String rawQuery) { return invoke(pathParameters, rawQuery, ""); }
-
-    public Object invoke(Map<String, String> pathParameters, String rawQuery, String body) {
-        try {
-            return method.invoke(target, resolveArguments(pathParameters, rawQuery, body));
-        } catch (IllegalAccessException e) {
-            throw new IllegalStateException("Unable to invoke route handler", e);
-        } catch (InvocationTargetException e) {
+    public Object invoke() { return invoke(Map.of(), null, "", Authentication.anonymous()); }
+    public Object invoke(Map<String, String> pathParameters, String rawQuery) { return invoke(pathParameters, rawQuery, "", Authentication.anonymous()); }
+    public Object invoke(Map<String, String> pathParameters, String rawQuery, String body) { return invoke(pathParameters, rawQuery, body, Authentication.anonymous()); }
+    public Object invoke(Map<String, String> pathParameters, String rawQuery, String body, Authentication authentication) {
+        try { return method.invoke(target, resolveArguments(pathParameters, rawQuery, body, authentication)); }
+        catch (IllegalAccessException e) { throw new IllegalStateException("Unable to invoke route handler", e); }
+        catch (InvocationTargetException e) {
             Throwable cause = e.getCause();
             if (cause instanceof RuntimeException runtimeException) throw runtimeException;
             throw new IllegalStateException("Route handler failed", cause);
         }
     }
-
-    private Object[] resolveArguments(Map<String, String> pathParameters, String rawQuery, String body) {
-        var parameters = method.getParameters();
-        Object[] arguments = new Object[parameters.length];
-        Object[] path = pathResolver.resolve(method, pathParameters);
-        Object[] query = queryResolver.resolve(method, rawQuery);
+    private Object[] resolveArguments(Map<String, String> pathParameters, String rawQuery, String body, Authentication authentication) {
+        RolesAllowed roles = method.getAnnotation(RolesAllowed.class);
+        if (roles != null && !authorizer.allowed(authentication, roles.value())) throw new ForbiddenException("Forbidden");
+        var parameters = method.getParameters(); Object[] arguments = new Object[parameters.length];
+        Object[] path = pathResolver.resolve(method, pathParameters); Object[] query = queryResolver.resolve(method, rawQuery);
         for (int i = 0; i < parameters.length; i++) {
             var parameter = parameters[i];
             if (parameter.isAnnotationPresent(PathParam.class)) arguments[i] = path[i];
             else if (parameter.isAnnotationPresent(QueryParam.class)) arguments[i] = query[i];
-            else if (parameter.isAnnotationPresent(Body.class)) {
-                arguments[i] = Json.read(body, parameter.getType());
-                if (parameter.isAnnotationPresent(Validated.class)) validator.validate(arguments[i]);
-            } else if (parameter.isAnnotationPresent(Inject.class)) {
-                arguments[i] = injector.get(parameter.getType());
-            } else throw new IllegalArgumentException("Unsupported route parameter: " + parameter);
+            else if (parameter.isAnnotationPresent(Body.class)) { arguments[i] = Json.read(body, parameter.getType()); if (parameter.isAnnotationPresent(Validated.class)) validator.validate(arguments[i]); }
+            else if (parameter.isAnnotationPresent(Inject.class)) arguments[i] = injector.get(parameter.getType());
+            else throw new IllegalArgumentException("Unsupported route parameter: " + parameter);
         }
         return arguments;
     }
