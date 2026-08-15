@@ -17,7 +17,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.12.2</junit.version>
     </properties>
-    <modules><module>zupix-core</module><module>zupix-cli</module></modules>
+    <modules>
+        <module>zupix-core</module>
+        <module>zupix-security</module>
+        <module>zupix-cli</module>
+    </modules>
     <dependencyManagement><dependencies><dependency><groupId>org.junit</groupId><artifactId>junit-bom</artifactId><version>${junit.version}</version><type>pom</type><scope>import</scope></dependency></dependencies></dependencyManagement>
     <build>
         <pluginManagement><plugins>
