@@ -11,10 +11,16 @@ public final class RouteHandler {
     private final PathParameterResolver pathResolver = new PathParameterResolver();
     private final QueryParameterResolver queryResolver = new QueryParameterResolver();
     private final Validator validator = new Validator();
+    private final Injector injector;
 
     public RouteHandler(Object target, Method method) {
+        this(target, method, new Injector());
+    }
+
+    public RouteHandler(Object target, Method method, Injector injector) {
         this.target = target;
         this.method = method;
+        this.injector = injector;
         this.method.setAccessible(true);
     }
 
@@ -45,6 +51,8 @@ public final class RouteHandler {
             else if (parameter.isAnnotationPresent(Body.class)) {
                 arguments[i] = Json.read(body, parameter.getType());
                 if (parameter.isAnnotationPresent(Validated.class)) validator.validate(arguments[i]);
+            } else if (parameter.isAnnotationPresent(Inject.class)) {
+                arguments[i] = injector.get(parameter.getType());
             } else throw new IllegalArgumentException("Unsupported route parameter: " + parameter);
         }
         return arguments;
