@@ -10,6 +10,7 @@ public final class RouteHandler {
     private final Method method;
     private final PathParameterResolver pathResolver = new PathParameterResolver();
     private final QueryParameterResolver queryResolver = new QueryParameterResolver();
+    private final Validator validator = new Validator();
 
     public RouteHandler(Object target, Method method) {
         this.target = target;
@@ -18,14 +19,11 @@ public final class RouteHandler {
     }
 
     public Object invoke() { return invoke(Map.of(), null, ""); }
-    public Object invoke(Map<String, String> pathParameters, String rawQuery) {
-        return invoke(pathParameters, rawQuery, "");
-    }
+    public Object invoke(Map<String, String> pathParameters, String rawQuery) { return invoke(pathParameters, rawQuery, ""); }
 
     public Object invoke(Map<String, String> pathParameters, String rawQuery, String body) {
         try {
-            Object[] arguments = resolveArguments(pathParameters, rawQuery, body);
-            return method.invoke(target, arguments);
+            return method.invoke(target, resolveArguments(pathParameters, rawQuery, body));
         } catch (IllegalAccessException e) {
             throw new IllegalStateException("Unable to invoke route handler", e);
         } catch (InvocationTargetException e) {
@@ -44,8 +42,10 @@ public final class RouteHandler {
             var parameter = parameters[i];
             if (parameter.isAnnotationPresent(PathParam.class)) arguments[i] = path[i];
             else if (parameter.isAnnotationPresent(QueryParam.class)) arguments[i] = query[i];
-            else if (parameter.isAnnotationPresent(Body.class)) arguments[i] = Json.read(body, parameter.getType());
-            else throw new IllegalArgumentException("Unsupported route parameter: " + parameter);
+            else if (parameter.isAnnotationPresent(Body.class)) {
+                arguments[i] = Json.read(body, parameter.getType());
+                if (parameter.isAnnotationPresent(Validated.class)) validator.validate(arguments[i]);
+            } else throw new IllegalArgumentException("Unsupported route parameter: " + parameter);
         }
         return arguments;
     }
