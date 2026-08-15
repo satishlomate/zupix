@@ -40,20 +40,20 @@ public final class ZupixServer implements AutoCloseable {
     }
 
     private static void handle(HttpExchange exchange, Router router) throws IOException {
-        Router.RegisteredRoute registered = router.match(
+        Router.MatchedRoute matched = router.match(
                 exchange.getRequestMethod(), exchange.getRequestURI().getPath());
 
         byte[] body;
         int status;
-        if (registered == null) {
+        if (matched == null) {
             body = "Not Found".getBytes(StandardCharsets.UTF_8);
             status = 404;
-        } else if (registered.handler() == null) {
+        } else if (matched.route().handler() == null) {
             body = "Zupix route matched".getBytes(StandardCharsets.UTF_8);
             status = 200;
         } else {
             try {
-                Object result = registered.handler().invoke();
+                Object result = matched.route().handler().invoke(matched.parameters());
                 body = String.valueOf(result).getBytes(StandardCharsets.UTF_8);
                 status = 200;
             } catch (RuntimeException exception) {
