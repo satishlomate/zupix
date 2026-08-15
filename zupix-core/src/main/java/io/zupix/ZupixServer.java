@@ -32,33 +32,33 @@ public final class ZupixServer implements AutoCloseable {
         int status;
         String contentType = "text/plain; charset=utf-8";
         if (matched == null) {
-            response = "Not Found".getBytes(StandardCharsets.UTF_8);
-            status = 404;
+            response = "Not Found".getBytes(StandardCharsets.UTF_8); status = 404;
         } else if (matched.route().handler() == null) {
-            response = "Zupix route matched".getBytes(StandardCharsets.UTF_8);
-            status = 200;
+            response = "Zupix route matched".getBytes(StandardCharsets.UTF_8); status = 200;
         } else {
             try {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                Object result = matched.route().handler().invoke(
-                        matched.parameters(), exchange.getRequestURI().getRawQuery(), requestBody);
+                Object result = matched.route().handler().invoke(matched.parameters(), exchange.getRequestURI().getRawQuery(), requestBody);
+                if (result instanceof Response explicit) {
+                    status = explicit.status();
+                    applyHeaders(exchange, explicit.headers());
+                    result = explicit.body();
+                } else status = 200;
                 if (result == null) response = new byte[0];
                 else if (result instanceof String text) response = text.getBytes(StandardCharsets.UTF_8);
-                else {
-                    response = Json.write(result).getBytes(StandardCharsets.UTF_8);
-                    contentType = "application/json; charset=utf-8";
-                }
-                status = 200;
+                else { response = Json.write(result).getBytes(StandardCharsets.UTF_8); contentType = "application/json; charset=utf-8"; }
             } catch (IllegalArgumentException exception) {
-                response = exception.getMessage().getBytes(StandardCharsets.UTF_8);
-                status = 400;
+                response = exception.getMessage().getBytes(StandardCharsets.UTF_8); status = 400;
             } catch (RuntimeException exception) {
-                response = "Internal Server Error".getBytes(StandardCharsets.UTF_8);
-                status = 500;
+                response = "Internal Server Error".getBytes(StandardCharsets.UTF_8); status = 500;
             }
         }
-        exchange.getResponseHeaders().set("Content-Type", contentType);
+        if (exchange.getResponseHeaders().getFirst("Content-Type") == null) exchange.getResponseHeaders().set("Content-Type", contentType);
         exchange.sendResponseHeaders(status, response.length);
         try (OutputStream output = exchange.getResponseBody()) { output.write(response); }
+    }
+
+    private static void applyHeaders(HttpExchange exchange, java.util.Map<String, String> headers) {
+        headers.forEach((name, value) -> exchange.getResponseHeaders().set(name, value));
     }
 }
