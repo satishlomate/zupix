@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ZupixApplicationTest {
 
@@ -13,7 +14,7 @@ class ZupixApplicationTest {
         try (var zupix = ZupixApplication.create(application, 0)) {
             assertNotNull(zupix);
             assertEquals(1, zupix.router().routes().size());
-            assertEquals(0, zupix.port());
+            assertTrue(zupix.port() > 0);
         }
     }
 
