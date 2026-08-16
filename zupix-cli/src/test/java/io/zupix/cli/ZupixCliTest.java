@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -35,5 +37,23 @@ class ZupixCliTest {
             System.setOut(original);
         }
         assertTrue(output.toString().contains("Zupix CLI 0.1.0"));
+    }
+
+    @Test
+    void newCreatesProjectSkeleton() throws Exception {
+        Path temp = Files.createTempDirectory("zupix-cli-test");
+        Path project = temp.resolve("hello-api");
+        try {
+            ZupixCli.main(new String[]{"new", project.toString()});
+            assertTrue(Files.exists(project.resolve("pom.xml")));
+            assertTrue(Files.exists(project.resolve("src/main/java/Application.java")));
+            assertTrue(Files.exists(project.resolve("README.md")));
+            assertTrue(Files.readString(project.resolve("pom.xml")).contains("<version>0.1.0</version>"));
+            assertTrue(Files.readString(project.resolve("src/main/java/Application.java")).contains("@Get(\"/\")"));
+        } finally {
+            Files.walk(temp).sorted((a, b) -> b.compareTo(a)).forEach(path -> {
+                try { Files.deleteIfExists(path); } catch (Exception ignored) { }
+            });
+        }
     }
 }
