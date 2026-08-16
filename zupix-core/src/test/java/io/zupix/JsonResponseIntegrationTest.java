@@ -13,6 +13,8 @@ class JsonResponseIntegrationTest {
         assertEquals(200, response.status());
         assertEquals("Satish", ((User) response.body()).name());
         assertEquals(30, ((User) response.body()).age());
-        assertEquals("Satish", Json.read(Json.write(response.body()), User.class).name());
+        User decoded = (User) Json.read(Json.write(response.body()), User.class);
+        assertEquals("Satish", decoded.name());
+        assertEquals(30, decoded.age());
     }
 }
