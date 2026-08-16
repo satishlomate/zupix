@@ -6,6 +6,7 @@ import java.nio.file.Path;
 
 /** Initial Zupix command-line interface. */
 public final class ZupixCli {
+    private static final String VERSION = "0.1.0";
     private ZupixCli() {}
 
     public static void main(String[] args) throws Exception {
@@ -13,7 +14,7 @@ public final class ZupixCli {
         switch (args[0]) {
             case "new" -> requireProjectName(args);
             case "run" -> runProject();
-            case "version" -> System.out.println("Zupix CLI 0.1.0-SNAPSHOT");
+            case "version" -> System.out.println("Zupix CLI " + VERSION);
             default -> { System.err.println("Unknown command: " + args[0]); help(); System.exit(1); }
         }
     }
@@ -44,7 +45,7 @@ public final class ZupixCli {
                     <modelVersion>4.0.0</modelVersion>
                     <groupId>com.example</groupId>
                     <artifactId>%s</artifactId>
-                    <version>0.1.0-SNAPSHOT</version>
+                    <version>0.1.0</version>
                     <properties>
                         <maven.compiler.release>21</maven.compiler.release>
                         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -53,7 +54,7 @@ public final class ZupixCli {
                         <dependency>
                             <groupId>io.zupix</groupId>
                             <artifactId>zupix-core</artifactId>
-                            <version>0.1.0-SNAPSHOT</version>
+                            <version>0.1.0</version>
                         </dependency>
                     </dependencies>
                     <build>
@@ -78,7 +79,7 @@ public final class ZupixCli {
     }
 
     private static void help() {
-        System.out.println("Zupix CLI");
+        System.out.println("Zupix CLI " + VERSION);
         System.out.println("  zupix new <name>   Create a new API project");
         System.out.println("  zupix run          Build and run the current API project");
         System.out.println("  zupix version      Show version");
