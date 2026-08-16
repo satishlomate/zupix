@@ -25,7 +25,7 @@ class ZupixCliTest {
     }
 
     @Test
-    void versionReportsSnapshotVersion() throws Exception {
+    void versionReportsReleaseVersion() throws Exception {
         var output = new ByteArrayOutputStream();
         var original = System.out;
         try {
@@ -34,6 +34,6 @@ class ZupixCliTest {
         } finally {
             System.setOut(original);
         }
-        assertTrue(output.toString().contains("Zupix CLI 0.1.0-SNAPSHOT"));
+        assertTrue(output.toString().contains("Zupix CLI 0.1.0"));
     }
 }
