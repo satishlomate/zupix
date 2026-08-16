@@ -38,7 +38,12 @@ public final class ZupixServer implements AutoCloseable {
         exchange.getResponseHeaders().set("Access-Control-Allow-Headers",cors.allowHeadersHeader());
     }
     private Response dispatch(HttpExchange exchange,String body){
-        Router.MatchedRoute matched=router.match(exchange.getRequestMethod(),exchange.getRequestURI().getPath());
+        String path = exchange.getRequestURI().getPath();
+        if ("GET".equalsIgnoreCase(exchange.getRequestMethod()) && "/openapi.json".equals(path))
+            return Response.ok(new OpenApiGenerator().generate(router));
+        if ("GET".equalsIgnoreCase(exchange.getRequestMethod()) && "/docs".equals(path))
+            return Response.ok("<!doctype html><html><head><meta charset=\"utf-8\"><title>Zupix API Docs</title></head><body><h1>Zupix API</h1><p>OpenAPI: <a href=\"/openapi.json\">/openapi.json</a></p></body></html>");
+        Router.MatchedRoute matched=router.match(exchange.getRequestMethod(),path);
         if(matched==null)return Response.status(404,"Not Found");
         try{
             if(matched.route().handler()==null)return Response.ok("Zupix route matched");
