@@ -22,9 +22,20 @@ public final class ZupixServer implements AutoCloseable {
         String path=exchange.getRequestURI().getPath(); String body=new String(exchange.getRequestBody().readAllBytes(),StandardCharsets.UTF_8);
         Map<String,String> headers=new LinkedHashMap<>(); exchange.getRequestHeaders().forEach((name,values)->{if(!values.isEmpty())headers.put(name,values.get(0));});
         RequestContext request=new RequestContext(exchange.getRequestMethod(),path,exchange.getRequestURI().getRawQuery(),headers,body); HttpResponse state=new HttpResponse();
+        CorsMiddleware cors=findCors();
+        if (cors != null) {
+            applyCors(exchange, cors);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) { writeResponse(exchange, Response.status(204, null)); return; }
+        }
         try { new MiddlewarePipeline(middleware.all()).execute(request,()->{try{state.set(dispatch(exchange,body));}catch(RuntimeException e){Response handled=exceptions.handle(e);if(handled!=null)state.set(handled);else throw e;}}); }
         catch(RuntimeException e){Response handled=exceptions.handle(e);state.set(handled!=null?handled:Response.status(500,"Internal Server Error"));}
         writeResponse(exchange,state.get()==null?Response.status(500,"No response produced"):state.get());
+    }
+    private CorsMiddleware findCors(){ for(Middleware item: middleware.all()) if(item instanceof CorsMiddleware cors) return cors; return null; }
+    private static void applyCors(HttpExchange exchange,CorsMiddleware cors){
+        exchange.getResponseHeaders().set("Access-Control-Allow-Origin",cors.allowOrigin());
+        exchange.getResponseHeaders().set("Access-Control-Allow-Methods",cors.allowMethodsHeader());
+        exchange.getResponseHeaders().set("Access-Control-Allow-Headers",cors.allowHeadersHeader());
     }
     private Response dispatch(HttpExchange exchange,String body){
         Router.MatchedRoute matched=router.match(exchange.getRequestMethod(),exchange.getRequestURI().getPath());
