@@ -9,8 +9,8 @@ class OpenApiGeneratorTest {
     @Test
     void generatesOpenApiDocumentForRegisteredRoutes() {
         Router router = new Router();
-        router.add(new Route("GET", "/hello", null));
-        router.add(new Route("POST", "/users", null));
+        router.add(new Route("GET", "/hello"), null);
+        router.add(new Route("POST", "/users"), null);
 
         OpenAPI document = new OpenApiGenerator().generate(router);
 
