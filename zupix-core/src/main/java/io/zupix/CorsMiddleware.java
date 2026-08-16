@@ -1,8 +1,9 @@
 package io.zupix;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
-/** Simple configurable CORS middleware for browser clients. */
+/** Configurable CORS policy used by the HTTP runtime. */
 public final class CorsMiddleware implements Middleware {
     private final String allowOrigin;
     private final Set<String> methods;
@@ -13,6 +14,7 @@ public final class CorsMiddleware implements Middleware {
     }
 
     public CorsMiddleware(String allowOrigin, Set<String> methods, Set<String> headers) {
+        if (allowOrigin == null || allowOrigin.isBlank()) throw new IllegalArgumentException("allowOrigin must not be blank");
         this.allowOrigin = allowOrigin;
         this.methods = Set.copyOf(methods);
         this.headers = Set.copyOf(headers);
@@ -21,6 +23,8 @@ public final class CorsMiddleware implements Middleware {
     public String allowOrigin() { return allowOrigin; }
     public Set<String> methods() { return methods; }
     public Set<String> headers() { return headers; }
+    String allowMethodsHeader() { return methods.stream().sorted().collect(Collectors.joining(", ")); }
+    String allowHeadersHeader() { return headers.stream().sorted(String.CASE_INSENSITIVE_ORDER).collect(Collectors.joining(", ")); }
 
     @Override
     public void handle(RequestContext request, MiddlewareChain chain) {
