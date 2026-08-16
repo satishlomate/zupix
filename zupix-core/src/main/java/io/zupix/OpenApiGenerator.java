@@ -18,4 +18,8 @@ public final class OpenApiGenerator {
                 .toList();
         return new OpenAPI("3.0.3", new OpenAPI.Info("Zupix API", "0.1.0"), new OpenAPI.Paths(items));
     }
+
+    public String generateJson(Router router) {
+        return Json.write(generate(router));
+    }
 }
