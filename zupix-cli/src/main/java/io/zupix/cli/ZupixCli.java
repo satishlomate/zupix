@@ -3,11 +3,15 @@ package io.zupix.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /** Initial Zupix command-line interface. */
 public final class ZupixCli {
     private static final String VERSION = "0.1.0";
+    private static final List<String> COMMANDS = List.of("new", "run", "version", "help");
     private ZupixCli() {}
+
+    public static List<String> commands() { return COMMANDS; }
 
     public static void main(String[] args) throws Exception {
         if (args.length == 0 || "help".equals(args[0])) { help(); return; }
