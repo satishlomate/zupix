@@ -13,6 +13,11 @@ public final class AuthenticationMiddleware implements Middleware {
     public void handle(RequestContext request, MiddlewareChain chain) {
         Principal principal = authentication.authenticate(request);
         if (principal == null) throw new UnauthorizedException("Authentication required");
-        chain.next();
+        SecurityContext.set(principal);
+        try {
+            chain.next();
+        } finally {
+            SecurityContext.clear();
+        }
     }
 }
