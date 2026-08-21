@@ -21,13 +21,13 @@ The release build publishes the library components:
 3. Create a Central Portal user token.
 4. Create a GPG/PGP signing key and publish the public key to a supported key server.
 
-Central requires sources and Javadoc JARs, GPG/PGP signatures, required POM metadata, and checksums for published components. The repository build generates these prerequisites; the Central publishing plugin generates checksums for the staged bundle.
+Central requires sources and Javadoc JARs, GPG/PGP signatures, required POM metadata, and checksums for published components. The repository build generates the sources, Javadocs, and signatures; the Central publishing plugin generates checksums for the staged bundle.
 
 ## GitHub Actions secrets
 
 Configure these repository secrets before creating a release tag:
 
-- `MAVEN_USERNAME` — Central Portal user-token username/namecode.
+- `MAVEN_USERNAME` — Central Portal user-token username.
 - `MAVEN_CENTRAL_TOKEN` — Central Portal user-token password/token.
 - `MAVEN_GPG_PRIVATE_KEY` — ASCII-armored transferable secret key, for example from `gpg --armor --export-secret-keys <KEY_ID>`.
 - `MAVEN_GPG_PASSPHRASE` — passphrase for the signing key.
