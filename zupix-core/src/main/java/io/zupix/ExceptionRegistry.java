@@ -8,15 +8,12 @@ public final class ExceptionRegistry {
     private final Map<Class<? extends Throwable>, ExceptionHandler<?>> handlers = new LinkedHashMap<>();
 
     public <T extends Throwable> ExceptionRegistry on(Class<T> type, ExceptionHandler<T> handler) {
-        handlers.put(type, handler);
-        return this;
+        handlers.put(type, handler); return this;
     }
 
-    Response handle(Throwable error) {
+    public Response handle(Throwable error) {
         for (var entry : handlers.entrySet()) {
-            if (entry.getKey().isAssignableFrom(error.getClass())) {
-                return invoke(entry.getValue(), error);
-            }
+            if (entry.getKey().isAssignableFrom(error.getClass())) return invoke(entry.getValue(), error);
         }
         return null;
     }
