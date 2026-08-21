@@ -134,6 +134,7 @@
                     <publishingServerId>central</publishingServerId>
                     <checksums>all</checksums>
                     <autoPublish>false</autoPublish>
+                    <excludeArtifacts>zupix-cli,hello-world</excludeArtifacts>
                 </configuration>
             </plugin>
         </plugins>
