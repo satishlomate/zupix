@@ -23,17 +23,28 @@ class OpenApiGeneratorTest {
     }
 
     @Test
-    void preservesRegisteredHttpMethods() {
+    void groupsMultipleMethodsUnderOnePath() {
         Router router = new Router();
         router.add(new Route("GET", "/items"), null);
         router.add(new Route("PUT", "/items"), null);
         router.add(new Route("DELETE", "/items"), null);
 
-        var routes = router.routes();
+        OpenAPI document = new OpenApiGenerator().generate(router);
+        var item = document.paths().items().stream()
+                .filter(p -> p.path().equals("/items"))
+                .findFirst().orElseThrow();
 
-        assertEquals(3, routes.size());
-        assertEquals("GET", routes.get(0).method());
-        assertEquals("PUT", routes.get(1).method());
-        assertEquals("DELETE", routes.get(2).method());
+        assertEquals(3, item.operations().size());
+        assertEquals("get", item.operations().get(0).method());
+        assertEquals("put", item.operations().get(1).method());
+        assertEquals("delete", item.operations().get(2).method());
+    }
+
+    @Test
+    void generatesJsonDocument() {
+        String json = new OpenApiGenerator().generateJson(new Router().get("/hello"));
+        assertTrue(json.contains("\"openapi\":\"3.0.3\""));
+        assertTrue(json.contains("/hello"));
+        assertTrue(json.contains("\"method\":\"get\""));
     }
 }
