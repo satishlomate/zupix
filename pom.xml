@@ -10,9 +10,21 @@
     <url>https://github.com/satishlomate/zupix</url>
     <licenses><license><name>Apache License, Version 2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0.txt</url><distribution>repo</distribution></license></licenses>
     <developers><developer><name>Satish Lomate</name></developer></developers>
-    <scm><connection>scm:git:https://github.com/satishlomate/zupix.git</connection><developerConnection>scm:git:ssh://git@github.com/satishlomate/zupix.git</developerConnection><url>https://github.com/satishlomate/zupix</url><tag>v0.1.0</tag></scm>
+    <scm><connection>scm:git:https://github.com/satishlomate/zupix.git</connection><developerConnection>scm:git:ssh://git@github.com/satishlomate/zupix.git</developerConnection><url>https://github.com/satishlomate/zupix</url></scm>
     <properties><java.version>21</java.version><maven.compiler.release>${java.version}</maven.compiler.release><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><junit.version>5.12.2</junit.version></properties>
-    <modules><module>zupix-core</module><module>zupix-http</module><module>zupix-security</module><module>zupix-cli</module></modules>
+    <modules>
+        <module>zupix-core</module>
+        <module>zupix-http</module>
+        <module>zupix-security</module>
+        <module>zupix-test</module>
+        <module>zupix-cli</module>
+    </modules>
     <dependencyManagement><dependencies><dependency><groupId>org.junit</groupId><artifactId>junit-bom</artifactId><version>${junit.version}</version><type>pom</type><scope>import</scope></dependency></dependencies></dependencyManagement>
-    <build><pluginManagement><plugins><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.3</version></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version><configuration><archive><manifest><mainClass>io.zupix.cli.ZupixCli</mainClass></manifest></archive></configuration></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><version>3.3.1</version><executions><execution><id>attach-sources</id><goals><goal>jar-no-fork</goal></goals></execution></executions></plugin><plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-javadoc-plugin</artifactId><version>3.11.2</version><executions><execution><id>attach-javadocs</id><goals><goal>jar</goal></goals></execution></executions></plugin></plugins></pluginManagement></build>
+    <build><pluginManagement><plugins>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.0</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.3</version></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId><version>3.4.2</version><configuration><archive><manifest><mainClass>io.zupix.cli.ZupixCli</mainClass></manifest></archive></configuration></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><version>3.3.1</version><executions><execution><id>attach-sources</id><goals><goal>jar-no-fork</goal></goals></execution></executions></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-javadoc-plugin</artifactId><version>3.11.2</version><executions><execution><id>attach-javadocs</id><goals><goal>jar</goal></goals></execution></executions></plugin>
+    </plugins></pluginManagement></build>
 </project>
