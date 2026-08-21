@@ -23,11 +23,8 @@ public final class CorsMiddleware implements Middleware {
     public String allowOrigin() { return allowOrigin; }
     public Set<String> methods() { return methods; }
     public Set<String> headers() { return headers; }
-    String allowMethodsHeader() { return methods.stream().sorted().collect(Collectors.joining(", ")); }
-    String allowHeadersHeader() { return headers.stream().sorted(String.CASE_INSENSITIVE_ORDER).collect(Collectors.joining(", ")); }
+    public String allowMethodsHeader() { return methods.stream().sorted().collect(Collectors.joining(", ")); }
+    public String allowHeadersHeader() { return headers.stream().sorted(String.CASE_INSENSITIVE_ORDER).collect(Collectors.joining(", ")); }
 
-    @Override
-    public void handle(RequestContext request, MiddlewareChain chain) {
-        chain.next();
-    }
+    @Override public void handle(RequestContext request, MiddlewareChain chain) { chain.next(); }
 }
