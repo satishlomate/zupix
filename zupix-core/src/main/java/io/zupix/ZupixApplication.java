@@ -1,5 +1,7 @@
 package io.zupix;
 
+import io.zupix.http.ZupixHttpServer;
+
 import java.io.IOException;
 import java.util.Objects;
 
@@ -8,10 +10,10 @@ public final class ZupixApplication implements AutoCloseable {
     private final Router router;
     private final MiddlewareRegistry middleware;
     private final ExceptionRegistry exceptions;
-    private final ZupixServer server;
+    private final ZupixHttpServer server;
 
     private ZupixApplication(Router router, MiddlewareRegistry middleware,
-                             ExceptionRegistry exceptions, ZupixServer server) {
+                             ExceptionRegistry exceptions, ZupixHttpServer server) {
         this.router = router;
         this.middleware = middleware;
         this.exceptions = exceptions;
@@ -27,7 +29,7 @@ public final class ZupixApplication implements AutoCloseable {
         MiddlewareRegistry middleware = new MiddlewareRegistry();
         ExceptionRegistry exceptions = new ExceptionRegistry();
         return new ZupixApplication(router, middleware, exceptions,
-                ZupixServer.create(port, router, middleware, exceptions));
+                ZupixHttpServer.create(port, router, middleware, exceptions));
     }
 
     public ZupixApplication use(Middleware value) {
