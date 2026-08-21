@@ -57,7 +57,7 @@ public final class ZupixCli {
                     <dependencies>
                         <dependency>
                             <groupId>io.zupix</groupId>
-                            <artifactId>zupix-core</artifactId>
+                            <artifactId>zupix-http</artifactId>
                             <version>0.1.0</version>
                         </dependency>
                     </dependencies>
