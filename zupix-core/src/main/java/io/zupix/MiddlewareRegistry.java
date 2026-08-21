@@ -7,12 +7,6 @@ import java.util.List;
 public final class MiddlewareRegistry {
     private final List<Middleware> middlewares = new ArrayList<>();
 
-    public MiddlewareRegistry use(Middleware middleware) {
-        middlewares.add(middleware);
-        return this;
-    }
-
-    List<Middleware> all() {
-        return List.copyOf(middlewares);
-    }
+    public MiddlewareRegistry use(Middleware middleware) { middlewares.add(middleware); return this; }
+    public List<Middleware> all() { return List.copyOf(middlewares); }
 }
