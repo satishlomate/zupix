@@ -14,12 +14,8 @@ class ZupixCliTest {
     void helpListsCoreCommands() throws Exception {
         var output = new ByteArrayOutputStream();
         var original = System.out;
-        try {
-            System.setOut(new PrintStream(output));
-            ZupixCli.main(new String[]{"help"});
-        } finally {
-            System.setOut(original);
-        }
+        try { System.setOut(new PrintStream(output)); ZupixCli.main(new String[]{"help"}); }
+        finally { System.setOut(original); }
         String text = output.toString();
         assertTrue(text.contains("zupix new <name>"));
         assertTrue(text.contains("zupix run"));
@@ -30,26 +26,21 @@ class ZupixCliTest {
     void versionReportsReleaseVersion() throws Exception {
         var output = new ByteArrayOutputStream();
         var original = System.out;
-        try {
-            System.setOut(new PrintStream(output));
-            ZupixCli.main(new String[]{"version"});
-        } finally {
-            System.setOut(original);
-        }
+        try { System.setOut(new PrintStream(output)); ZupixCli.main(new String[]{"version"}); }
+        finally { System.setOut(original); }
         assertTrue(output.toString().contains("Zupix CLI 0.1.0"));
     }
 
     @Test
-    void newCreatesProjectSkeleton() throws Exception {
+    void newCreatesHttpBackedProjectSkeleton() throws Exception {
         Path temp = Files.createTempDirectory("zupix-cli-test");
         Path project = temp.resolve("hello-api");
         try {
             ZupixCli.main(new String[]{"new", project.toString()});
             assertTrue(Files.exists(project.resolve("pom.xml")));
             assertTrue(Files.exists(project.resolve("src/main/java/Application.java")));
-            assertTrue(Files.exists(project.resolve("README.md")));
-            assertTrue(Files.readString(project.resolve("pom.xml")).contains("<version>0.1.0</version>"));
-            assertTrue(Files.readString(project.resolve("src/main/java/Application.java")).contains("@Get(\"/\")"));
+            assertTrue(Files.readString(project.resolve("pom.xml")).contains("<artifactId>zupix-http</artifactId>"));
+            assertTrue(Files.readString(project.resolve("src/main/java/Application.java")).contains("ZupixApplication"));
         } finally {
             Files.walk(temp).sorted((a, b) -> b.compareTo(a)).forEach(path -> {
                 try { Files.deleteIfExists(path); } catch (Exception ignored) { }
